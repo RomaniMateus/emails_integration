@@ -1,0 +1,100 @@
+---
+- name: Setup n8n on EC2 Ubuntu com .env e swap
+  hosts: n8n
+  become: true
+
+  tasks:
+    # === SWAP CONFIGURATION ===
+    - name: Criar arquivo de swap (1GB)
+      command: fallocate -l 1G /swapfile
+      args:
+        creates: /swapfile
+
+    - name: Definir permissões corretas para o swap
+      file:
+        path: /swapfile
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Criar sistema de swap
+      command: mkswap /swapfile
+      when: ansible_swaptotal_mb == 0
+
+    - name: Ativar swap
+      command: swapon /swapfile
+      when: ansible_swaptotal_mb == 0
+
+    - name: Adicionar swap ao fstab
+      mount:
+        name: swap
+        src: /swapfile
+        fstype: swap
+        opts: sw
+        state: present
+
+    - name: Ajustar swappiness
+      sysctl:
+        name: vm.swappiness
+        value: 10
+        state: present
+        sysctl_set: yes
+        reload: yes
+
+    # === N8N SETUP ===
+    - name: Atualizar pacotes do sistema
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Instalar dependências básicas
+      apt:
+        name:
+          - curl
+          - gnupg
+          - ca-certificates
+          - build-essential
+          - unzip
+          - python3-pip
+        state: present
+
+    - name: Instalar Node.js (v18.x LTS)
+      shell: |
+        curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+        apt-get install -y nodejs
+
+    - name: Instalar n8n globalmente
+      npm:
+        name: n8n
+        global: yes
+
+    - name: Instalar PM2 globalmente
+      npm:
+        name: pm2
+        global: yes
+
+    - name: Criar diretório para o projeto n8n
+      file:
+        path: /opt/n8n
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Copiar .env para a instância
+      copy:
+        src: files/.env
+        dest: /opt/n8n/.env
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Criar serviço n8n com PM2 usando .env
+      shell: |
+        sudo -u ubuntu pm2 start n8n --name n8n --env production
+        sudo -u ubuntu pm2 set pm2:n8n env-file /opt/n8n/.env
+        sudo -u ubuntu pm2 restart n8n
+        sudo -u ubuntu pm2 save
+        pm2 startup systemd -u ubuntu --hp /home/ubuntu
+      args:
+        executable: /bin/bash
