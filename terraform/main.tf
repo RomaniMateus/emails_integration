@@ -44,11 +44,18 @@ resource "aws_instance" "n8n_server" {
   tags = {
     Name = "n8n-t2micro"
   }
+}
 
-#   user_data = file("cloud-init.sh") # ou deixe vazio se for usar Ansible
+resource "aws_eip" "n8n_eip" {
+  instance = aws_instance.n8n_server.id
+  domain   = "vpc"
+
+  tags = {
+    Name = "n8n-eip"
+  }
 }
 
 output "n8n_public_ip" {
-  value = aws_instance.n8n_server.public_ip
+  value       = aws_instance.n8n_server.public_ip
   description = "Endereço IP público da instância n8n"
 }
