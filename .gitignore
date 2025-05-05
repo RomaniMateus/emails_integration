@@ -40,4 +40,4 @@ terraform.rc
 others/
 
 # Ignore .env files
-.env
+ansible/files/.env
