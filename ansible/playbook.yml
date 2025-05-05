@@ -81,3 +81,17 @@
       npm:
         name: n8n
         global: yes
+
+    - name: Copiar arquivo .env para o servidor
+      copy:
+        src: ./files/.env
+        dest: /home/ubuntu/.env
+        owner: ubuntu
+        group: ubuntu
+        mode: '0600'
+
+    - name: Exportar variáveis do .env no bashrc
+      lineinfile:
+        path: /home/ubuntu/.bashrc
+        line: 'export $(grep -v "^#" /home/ubuntu/.env | xargs)'
+        insertafter: EOF
