@@ -38,3 +38,6 @@ terraform.rc
 
 # Ignore directory with other miscellaneous files
 others/
+
+# Ignore .env files
+.env
