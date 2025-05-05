@@ -1,12 +1,13 @@
 ---
 - name: Setup n8n on EC2 Ubuntu com .env e swap
-  hosts: n8n
-  become: true
+  hosts: all
+  become: yes
 
   tasks:
+
     # === SWAP CONFIGURATION ===
-    - name: Criar arquivo de swap (1GB)
-      command: fallocate -l 1G /swapfile
+    - name: Criar arquivo de swap (2GB)
+      command: fallocate -l 2G /swapfile
       args:
         creates: /swapfile
 
@@ -41,60 +42,42 @@
         sysctl_set: yes
         reload: yes
 
-    # === N8N SETUP ===
-    - name: Atualizar pacotes do sistema
-      apt:
-        update_cache: yes
-        upgrade: dist
+    # === NODEJS CONFIGURATION ===
 
-    - name: Instalar dependências básicas
-      apt:
-        name:
-          - curl
-          - gnupg
-          - ca-certificates
-          - build-essential
-          - unzip
-          - python3-pip
-        state: present
-
-    - name: Instalar Node.js (v18.x LTS)
+    - name: Aguardar liberação do dpkg lock
       shell: |
-        curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-        apt-get install -y nodejs
+        while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+          echo "Aguardando liberação do dpkg lock..."
+          sleep 3
+        done
+      args:
+        executable: /bin/bash
 
-    - name: Instalar n8n globalmente
-      npm:
-        name: n8n
-        global: yes
+    - name: Adicionar repositório Node.js 20.x (NodeSource)
+      shell: curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+      args:
+        executable: /bin/bash
+
+    - name: Instalar Node.js 20.x e npm
+      apt:
+        name: nodejs
+        state: present
+        update_cache: yes
+
+    - name: Verificar versão do Node.js
+      command: node -v
+      register: node_version
+
+    - name: Verificar versão do npm
+      command: npm -v
+      register: npm_version
 
     - name: Instalar PM2 globalmente
       npm:
         name: pm2
         global: yes
 
-    - name: Criar diretório para o projeto n8n
-      file:
-        path: /opt/n8n
-        state: directory
-        owner: ubuntu
-        group: ubuntu
-        mode: '0755'
-
-    - name: Copiar .env para a instância
-      copy:
-        src: files/.env
-        dest: /opt/n8n/.env
-        owner: ubuntu
-        group: ubuntu
-        mode: '0644'
-
-    - name: Criar serviço n8n com PM2 usando .env
-      shell: |
-        sudo -u ubuntu pm2 start n8n --name n8n --env production
-        sudo -u ubuntu pm2 set pm2:n8n env-file /opt/n8n/.env
-        sudo -u ubuntu pm2 restart n8n
-        sudo -u ubuntu pm2 save
-        pm2 startup systemd -u ubuntu --hp /home/ubuntu
-      args:
-        executable: /bin/bash
+    - name: Instalar n8n globalmente
+      npm:
+        name: n8n
+        global: yes
