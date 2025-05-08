@@ -1,10 +1,9 @@
 ---
 - name: Setup n8n on EC2 Ubuntu com .env e swap
   hosts: all
-  become: yes
+  become: true
 
   tasks:
-
     # === SWAP CONFIGURATION ===
     - name: Criar arquivo de swap (2GB)
       command: fallocate -l 2G /swapfile
@@ -16,7 +15,7 @@
         path: /swapfile
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
 
     - name: Criar sistema de swap
       command: mkswap /swapfile
@@ -76,11 +75,12 @@
       npm:
         name: pm2
         global: yes
+      become: true
 
     - name: Instalar n8n globalmente
-      npm:
-        name: n8n
-        global: yes
+      shell: "sudo npm install -g n8n"
+      args:
+        executable: /bin/bash
 
     - name: Copiar arquivo .env para o servidor
       copy:
@@ -88,10 +88,48 @@
         dest: /home/ubuntu/.env
         owner: ubuntu
         group: ubuntu
-        mode: '0600'
+        mode: "0600"
 
     - name: Exportar variáveis do .env no bashrc
       lineinfile:
         path: /home/ubuntu/.bashrc
         line: 'export $(grep -v "^#" /home/ubuntu/.env | xargs)'
         insertafter: EOF
+
+    - name: Copiar credenciais do Google
+      copy:
+        src: ./files/google-creds.json
+        dest: /home/ubuntu/google-creds.json
+        owner: ubuntu
+        group: ubuntu
+        mode: "0600"
+
+    - name: Copiar workflow de sincronização de calendário
+      copy:
+        src: ./files/calendar-sync-test.json
+        dest: /home/ubuntu/calendar-sync-test.json
+        owner: ubuntu
+        group: ubuntu
+        mode: "0600"
+
+    - name: Iniciar o n8n através do PM2
+      shell: |
+        export $(grep -v '^#' /home/ubuntu/.env | xargs)
+        pm2 start n8n --name n8n
+        pm2 save
+      args:
+        executable: /bin/bash
+
+    # - name: Importar credencial do Google no n8n
+    #   shell: |
+    #     export $(grep -v '^#' /home/ubuntu/.env | xargs)
+    #     n8n import:credentials --input=/home/ubuntu/google-creds.json
+    #   args:
+    #     executable: /bin/bash
+
+    # - name: Importar workflow de exemplo no n8n
+    #   shell: |
+    #     export $(grep -v '^#' /home/ubuntu/.env | xargs)
+    #     n8n import:workflow --input=/home/ubuntu/calendar-sync-test.json
+    #   args:
+    #     executable: /bin/bash
