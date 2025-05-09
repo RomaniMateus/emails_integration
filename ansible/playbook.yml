@@ -52,35 +52,51 @@
       args:
         executable: /bin/bash
 
+    - name: Verificar se o repositório NodeSource já está configurado
+      command: grep -q "deb.nodesource.com" /etc/apt/sources.list /etc/apt/sources.list.d/*
+      register: nodesource_repo_check
+      ignore_errors: true
+
     - name: Adicionar repositório Node.js 20.x (NodeSource)
       shell: curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
       args:
         executable: /bin/bash
+      when: nodesource_repo_check is failed
+
+    - name: Verificar versão do Node.js
+      command: node -v
+      register: node_version
+      ignore_errors: true
 
     - name: Instalar Node.js 20.x e npm
       apt:
         name: nodejs
         state: present
         update_cache: yes
+      when: node_version is failed
 
-    - name: Verificar versão do Node.js
-      command: node -v
-      register: node_version
-
-    - name: Verificar versão do npm
-      command: npm -v
-      register: npm_version
+    - name: Verificar se o PM2 já está instalado
+      command: "pm2 -v"
+      register: pm2_version
+      ignore_errors: true
 
     - name: Instalar PM2 globalmente
       npm:
         name: pm2
         global: yes
       become: true
+      when: pm2_version is failed
+
+    - name: Verificar se o n8n já está instalado
+      command: "n8n -v"
+      register: n8n_version
+      ignore_errors: true
 
     - name: Instalar n8n globalmente
       shell: "sudo npm install -g n8n"
       args:
         executable: /bin/bash
+      when: n8n_version is failed
 
     - name: Copiar arquivo .env para o servidor
       copy:
@@ -112,24 +128,51 @@
         group: ubuntu
         mode: "0600"
 
-    - name: Iniciar o n8n através do PM2
+    - name: Copiar ecosystem.config.js
+      copy:
+        src: ./files/ecosystem.config.js
+        dest: /home/ubuntu/ecosystem.config.js
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
+
+    - name: Instalar dotenv localmente na home do usuário
       shell: |
-        export $(grep -v '^#' /home/ubuntu/.env | xargs)
-        pm2 start n8n --name n8n
+        cd /home/ubuntu && npm install dotenv
+      args:
+        executable: /bin/bash
+      become: false
+      environment:
+        HOME: /home/ubuntu
+
+    - name: Iniciando o n8n com PM2 e ecosystem.config.js
+      debug:
+        msg: "Iniciando n8n via PM2 com ecosystem.config.js..."
+
+    - name: Iniciar o n8n com PM2 e ecosystem.config.js
+      shell: |
+        echo "→ Rodando PM2 start..."
+        pm2 start /home/ubuntu/ecosystem.config.js
+        echo "→ Salvando configuração com pm2 save..."
         pm2 save
       args:
         executable: /bin/bash
+      register: pm2_result
 
-    # - name: Importar credencial do Google no n8n
-    #   shell: |
-    #     export $(grep -v '^#' /home/ubuntu/.env | xargs)
-    #     n8n import:credentials --input=/home/ubuntu/google-creds.json
-    #   args:
-    #     executable: /bin/bash
+    - name: Resultado do PM2 start
+      debug:
+        var: pm2_result.stdout_lines
 
-    # - name: Importar workflow de exemplo no n8n
-    #   shell: |
-    #     export $(grep -v '^#' /home/ubuntu/.env | xargs)
-    #     n8n import:workflow --input=/home/ubuntu/calendar-sync-test.json
-    #   args:
-    #     executable: /bin/bash
+    - name: Importar credencial do Google no n8n
+      shell: |
+        export $(grep -v '^#' /home/ubuntu/.env | xargs)
+        n8n import:credentials --input=/home/ubuntu/google-creds.json
+      args:
+        executable: /bin/bash
+
+    - name: Importar workflow de exemplo no n8n
+      shell: |
+        export $(grep -v '^#' /home/ubuntu/.env | xargs)
+        n8n import:workflow --input=/home/ubuntu/calendar-sync-test.json
+      args:
+        executable: /bin/bash
