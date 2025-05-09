@@ -122,8 +122,8 @@
 
     - name: Copiar workflow de sincronização de calendário
       copy:
-        src: ./files/calendar-sync-test.json
-        dest: /home/ubuntu/calendar-sync-test.json
+        src: ./files/Calendar_Sync_Example.json
+        dest: /home/ubuntu/Calendar_Sync_Example.json
         owner: ubuntu
         group: ubuntu
         mode: "0600"
