@@ -136,6 +136,20 @@
         group: ubuntu
         mode: "0644"
 
+    - name: Importar credencial do Google no n8n
+      shell: |
+        export $(grep -v '^#' /home/ubuntu/.env | xargs)
+        n8n import:credentials --input=/home/ubuntu/google-creds.json
+      args:
+        executable: /bin/bash
+
+    - name: Importar workflow de exemplo no n8n
+      shell: |
+        export $(grep -v '^#' /home/ubuntu/.env | xargs)
+        n8n import:workflow --input=/home/ubuntu/Calendar_Sync_Example.json
+      args:
+        executable: /bin/bash
+
     - name: Instalar dotenv localmente na home do usuário
       shell: |
         cd /home/ubuntu && npm install dotenv
