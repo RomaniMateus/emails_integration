@@ -1,0 +1,109 @@
+{
+  "name": "Calendar Sync (Probably Final?)",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "calendarId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5010022ee7deb33d48f2d2ffa616b6326249e99932769403495ac347e822ff18@group.calendar.google.com",
+          "__regex": "(^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*)"
+        },
+        "triggerOn": "eventCreated",
+        "options": {}
+      },
+      "id": "Google Calendar Trigger",
+      "name": "Google Calendar Trigger",
+      "type": "n8n-nodes-base.googleCalendarTrigger",
+      "typeVersion": 1,
+      "position": [200, 200],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "Nwa5i8vaJn8kPr56",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "4a07b7b114c3a6e61e74eafd0aa9a897c6e43b04e54ecaa1c11e8826ec1e66b6@group.calendar.google.com",
+          "mode": "id"
+        },
+        "start": "={{$json.start.dateTime}}",
+        "end": "={{$json.end.dateTime}}",
+        "additionalFields": {}
+      },
+      "id": "Create Main Event",
+      "name": "Create in Main",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [600, 100],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "Nwa5i8vaJn8kPr56",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "a1cd63a4659bdfd332a93762a55bcf5e52899f5a26b41bc6d7a02b142a8e100c@group.calendar.google.com",
+          "mode": "id"
+        },
+        "start": "={{$json.start.dateTime}}",
+        "end": "={{$json.end.dateTime}}",
+        "additionalFields": {}
+      },
+      "id": "Create Dummy",
+      "name": "Create Dummy",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [600, 300],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "Nwa5i8vaJn8kPr56",
+          "name": "Google Calendar account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Calendar Trigger": {
+      "main": [
+        [
+          {
+            "node": "Create in Main",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create Dummy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "24be784d-5faf-433e-afa9-3abf09a28b92",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "43b5010a9c240e5046c33e0a37a4e84f56d1040d61045ac44f69449e1641dcf0"
+  },
+  "id": "O5SSFNOHiG4zdrd1",
+  "tags": []
+}
